@@ -1,6 +1,6 @@
 ---
 title: "Main"
-author: "Chengliang Tang, Yujie Wang, Diane Lu, Tian Zheng"
+author: "Yibai Liu"
 output:
   pdf_document: default
   html_notebook: default
@@ -10,40 +10,27 @@ In your final repo, there should be an R markdown file that organizes **all comp
 
 This file is currently a template for running evaluation experiments. You should update it according to your codes but following precisely the same structure. 
 
-```{r message=FALSE}
-if(!require("EBImage")){
-  install.packages("BiocManager")
-  BiocManager::install("EBImage")
-}
-if(!require("R.matlab")){
-  install.packages("R.matlab")
-}
-if(!require("readxl")){
-  install.packages("readxl")
-}
-
-if(!require("dplyr")){
-  install.packages("dplyr")
-}
-if(!require("readxl")){
-  install.packages("readxl")
-}
-
-if(!require("ggplot2")){
-  install.packages("ggplot2")
-}
-
-if(!require("caret")){
-  install.packages("caret")
-}
-
-if(!require("glmnet")){
-  install.packages("glmnet")
-}
-
-if(!require("WeightedROC")){
-  install.packages("WeightedROC")
-}
+```{r message=FALSE, include=FALSE}
+if(!require(EBImage)){
+    install.packages("BiocManager")
+    BiocManager::install("EBImage")}
+if(!require(R.matlab)){install.packages("R.matlab")}
+if(!require(readxl)){install.packages("readxl")}
+if(!require(dplyr)){install.packages("dplyr")}
+if(!require(ggplot2)){install.packages("ggplot2")}
+if(!require(caret)){install.packages("caret")}
+if(!require(glmnet)){install.packages("glmnet")}
+if(!require(WeightedROC)){install.packages("WeightedROC")}
+#if(!require(tensorflow)){install.packages("tensorflow")}
+#if(!require(keras)){install.packages("keras")}
+#if(!require(reticulate)){install.packages("reticulate")}
+# reference: https://www.business-science.io/learn-r/2020/05/15/setup-tensorflow-python-in-r.html
+if(!require(here)) {install.packages("here")}
+if(!require(imager)) {install.packages("imager")}
+if(!require(readr)) install.packages("readr")
+if(!require(RColorBrewer)) install.packages("RColorBrewer")
+if(!require(gbm)) install.packages("gbm")
+if(!require(spatstat)) install.packages("spatstat")
 
 library(R.matlab)
 library(readxl)
@@ -53,19 +40,30 @@ library(ggplot2)
 library(caret)
 library(glmnet)
 library(WeightedROC)
+library(tidyverse)
+#library(reticulate)
+#library(tensorflow)
+#library(keras)
+library(here)
+library(readr)
+library(RColorBrewer)
+library(imager)
+library(gbm)
+library(spatstat)
 ```
 
 ### Step 0 set work directories
 ```{r wkdir, eval=FALSE}
 set.seed(2020)
-# setwd("~/Project3-FacialEmotionRecognition/doc")
+setwd("~/R/Spring2021-Project3-group-2/doc")
 # here replace it with your own path or manually set it in RStudio to where this rmd file is located. 
 # use relative path for reproducibility
 ```
 
 Provide directories for training images. Training images and Training fiducial points will be in different subfolders. 
 ```{r}
-train_dir <- "../data/train_set/" # This will be modified for different data sets.
+# This will be modified for test data.
+train_dir <- "../data/train_set/" 
 train_image_dir <- paste(train_dir, "images/", sep="")
 train_pt_dir <- paste(train_dir,  "points/", sep="")
 train_label_path <- paste(train_dir, "label.csv", sep="") 
@@ -123,13 +121,44 @@ Fiducial points are stored in matlab format. In this step, we read them and stor
 #function to read fiducial points
 #input: index
 #output: matrix of fiducial points corresponding to the index
-readMat.matrix <- function(index){
-     return(round(readMat(paste0(train_pt_dir, sprintf("%04d", index), ".mat"))[[1]],0))
+readMat.matrix <- function(index, dir){
+     return(round(readMat(paste0(dir, sprintf("%04d", index), ".mat"))[[1]],0))
 }
 
 #load fiducial points
-fiducial_pt_list <- lapply(1:n_files, readMat.matrix)
+fiducial_pt_list <- lapply(1:n_files, readMat.matrix, dir = train_pt_dir)
 save(fiducial_pt_list, file="../output/fiducial_pt_list.RData")
+```
+
+Show a sample image for each class:
+```{r, fig.height=6, fig.width=8}
+# Plot a sample image of each class
+PlotSample <- function(label_num){
+  sample_image <- load.image(paste0(train_image_dir, sprintf("%04d", label_num), ".jpg"))
+  pts_df <- data.frame(fiducial_pt_list[label_num])
+  # Point 38 marks the tip of nose, which is at the center of the face,
+  # so use point 38 to crop the image
+  pts_center <- pts_df[38,]
+  # crop a 600*600 area
+  cropped<- imsub(sample_image,x %inr% c(pts_center$X1-300,pts_center$X1+300), 
+                               y %inr% c(pts_center$X2-300,pts_center$X1+300))
+  pts_df <- pts_df %>%
+    dplyr::mutate(X1 = X1 - (pts_center$X1-300),
+                  X2 = X2 - (pts_center$X2-300))
+  plot(cropped, axes=F, main = paste0("Class: ", info$label[label_num]))
+  points(pts_df,col="white", pch=20)
+  points(pts_df[c(19:23, 27:31, 50:63),],col="red", pch=20)
+  for (i in 1:78) { 
+    text(x = pts_df$X1[i], y = pts_df$X2[i],
+        i,                     # text content
+        col = "blue",
+        cex = 0.5)
+  }
+}
+
+PlotSample(1)
+PlotSample(6)
+
 ```
 
 ### Step 3: construct features and responses
@@ -149,25 +178,43 @@ and the midpoint of the upper lip(52).  For example, the distance of an happy fa
   + Input: list of images or fiducial point
   + Output: an RData file that contains extracted features and corresponding responses
 
-```{r feature}
+```{r feature0}
 source("../lib/feature.R")
-tm_feature_train <- NA
+# read feature set 0
+tm_feature0_train <- NA
 if(run.feature.train){
-  tm_feature_train <- system.time(dat_train <- feature(fiducial_pt_list, train_idx))
-  save(dat_train, file="../output/feature_train.RData")
+  tm_feature0_train <- system.time(feature0_train <- feature(fiducial_pt_list, train_idx))
+  save(feature0_train, file="../output/feature_set0_train.RData")
 }else{
-  load(file="../output/feature_train.RData")
+  load(file="../output/feature_set0_train.RData")
 }
-
-tm_feature_test <- NA
+tm_feature0_test <- NA
 if(run.feature.test){
-  tm_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx))
-  save(dat_test, file="../output/feature_test.RData")
+  tm_feature0_test <- system.time(feature0_test <- feature(fiducial_pt_list, test_idx))
+  save(feature0_test, file="../output/feature_set0_test.RData")
 }else{
-  load(file="../output/feature_test.RData")
+  load(file="../output/feature_set0_test.RData")
 }
 
+```
 
+
+```{r feature1}
+# read feature set 1
+tm_feature1_train <- NA
+if(run.feature.train){
+  tm_feature1_train <- system.time(feature1_train <- GetPairwiseFeature(fiducial_pt_list, train_idx))
+  save(feature1_train, file="../output/feature_set1_train.RData")
+}else{
+  load(file="../output/feature_set1_train.RData")
+}
+tm_feature1_test <- NA
+if(run.feature.test){
+  tm_feature1_test <- system.time(feature1_test <- GetPairwiseFeature(fiducial_pt_list, test_idx))
+  save(feature1_test, file="../output/feature_set1_test.RData")
+}else{
+  load(file="../output/feature_set1_test.RData")
+}
 ```
 
 ### Step 4: Train a classification model with training features and responses
@@ -182,21 +229,30 @@ Call the train model and test model from library.
   + Input: the fitted classification model using training data and processed features from testing images 
   + Input: an R object that contains a trained classifier.
   + Output: training model specification
-
-+ In this Starter Code, we use logistic regression with LASSO penalty to do classification. 
-
+  
 ```{r loadlib}
 source("../lib/train.R") 
 source("../lib/test.R")
 ```
+
+```{r baseline gbm}
+model_gbm <- train_gbm(feature0_train, feature0_train$label, cv = 5, n = 100)
+print(model_gbm)
+gbm.perf(model_gbm, method = "cv")
+
+```
+
+
+--------------------------------------NOT MODIFIED YET (Yibai)------------------------------------------
++ In this Starter Code, we use logistic regression with LASSO penalty to do classification. 
 
 #### Model selection with cross-validation
 * Do model selection by choosing among different values of training model parameters.
 
 ```{r runcv}
 source("../lib/cross_validation.R")
-feature_train = as.matrix(dat_train[, -6007])
-label_train = as.integer(dat_train$label) 
+feature_train = as.matrix(feature0_train[, -6007])
+label_train = as.integer(feature0_train$label) 
 if(run.cv){
   res_cv <- matrix(0, nrow = length(lmbd), ncol = 4)
   for(i in 1:length(lmbd)){

@@ -38,9 +38,9 @@ cv.function <- function(features, labels, K, l, reweight = FALSE){
     
     ## model training
     if (reweight){
-      model_train <- train(feature_train, label_train, w = weight_train, l)
+      model_train <- train_logit(feature_train, label_train, w = weight_train, l)
     } else {
-      model_train <- train(feature_train, label_train, w = NULL, l)
+      model_train <- train_logit(feature_train, label_train, w = NULL, l)
     }
     
     ## make predictions
