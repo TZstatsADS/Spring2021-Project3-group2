@@ -1,6 +1,6 @@
 ---
 title: "Main"
-author: "Chengliang Tang, Yujie Wang, Diane Lu, Tian Zheng"
+author: "Siyuan Sang"
 output:
   pdf_document: default
   html_notebook: default
@@ -58,7 +58,7 @@ library(WeightedROC)
 ### Step 0 set work directories
 ```{r wkdir, eval=FALSE}
 set.seed(2020)
-# setwd("~/Project3-FacialEmotionRecognition/doc")
+setwd("E:/project3/Spring2021-Project3-group-2/doc")
 # here replace it with your own path or manually set it in RStudio to where this rmd file is located. 
 # use relative path for reproducibility
 ```
@@ -70,6 +70,7 @@ train_image_dir <- paste(train_dir, "images/", sep="")
 train_pt_dir <- paste(train_dir,  "points/", sep="")
 train_label_path <- paste(train_dir, "label.csv", sep="") 
 ```
+
 
 ### Step 1: set up controls for evaluation experiments.
 
@@ -111,7 +112,6 @@ test_idx <- setdiff(info$Index, train_idx)
 If you choose to extract features from images, such as using Gabor filter, R memory will exhaust all images are read together. The solution is to repeat reading a smaller batch(e.g 100) and process them. 
 ```{r}
 n_files <- length(list.files(train_image_dir))
-
 image_list <- list()
 for(i in 1:100){
    image_list[[i]] <- readImage(paste0(train_image_dir, sprintf("%04d", i), ".jpg"))
@@ -123,13 +123,41 @@ Fiducial points are stored in matlab format. In this step, we read them and stor
 #function to read fiducial points
 #input: index
 #output: matrix of fiducial points corresponding to the index
-readMat.matrix <- function(index){
-     return(round(readMat(paste0(train_pt_dir, sprintf("%04d", index), ".mat"))[[1]],0))
+readMat.matrix <- function(index, dir){
+     return(round(readMat(paste0(dir, sprintf("%04d", index), ".mat"))[[1]],0))
 }
-
 #load fiducial points
-fiducial_pt_list <- lapply(1:n_files, readMat.matrix)
+fiducial_pt_list <- lapply(1:n_files, readMat.matrix, dir = train_pt_dir)
 save(fiducial_pt_list, file="../output/fiducial_pt_list.RData")
+```
+
+Show a sample image for each class:
+```{r, fig.height=6, fig.width=8}
+# Plot a sample image of each class
+PlotSample <- function(label_num){
+  sample_image <- load.image(paste0(train_image_dir, sprintf("%04d", label_num), ".jpg"))
+  pts_df <- data.frame(fiducial_pt_list[label_num])
+  # Point 38 marks the tip of nose, which is at the center of the face,
+  # so use point 38 to crop the image
+  pts_center <- pts_df[38,]
+  # crop a 600*600 area
+  cropped<- imsub(sample_image,x %inr% c(pts_center$X1-300,pts_center$X1+300), 
+                               y %inr% c(pts_center$X2-300,pts_center$X1+300))
+  pts_df <- pts_df %>%
+    dplyr::mutate(X1 = X1 - (pts_center$X1-300),
+                  X2 = X2 - (pts_center$X2-300))
+  plot(cropped, axes=F, main = paste0("Class: ", info$label[label_num]))
+  points(pts_df,col="white", pch=20)
+  points(pts_df[c(19:23, 27:31, 50:63),],col="red", pch=20)
+  for (i in 1:78) { 
+    text(x = pts_df$X1[i], y = pts_df$X2[i],
+        i,                     # text content
+        col = "blue",
+        cex = 0.5)
+  }
+}
+PlotSample(1)
+PlotSample(6)
 ```
 
 ### Step 3: construct features and responses
@@ -149,25 +177,42 @@ and the midpoint of the upper lip(52).  For example, the distance of an happy fa
   + Input: list of images or fiducial point
   + Output: an RData file that contains extracted features and corresponding responses
 
-```{r feature}
+```{r feature0}
 source("../lib/feature.R")
-tm_feature_train <- NA
+# read feature set 0
+tm_feature0_train <- NA
 if(run.feature.train){
-  tm_feature_train <- system.time(dat_train <- feature(fiducial_pt_list, train_idx))
-  save(dat_train, file="../output/feature_train.RData")
+  tm_feature0_train <- system.time(feature0_train <- feature(fiducial_pt_list, train_idx))
+  save(feature0_train, file="../output/feature_set0_train.RData")
 }else{
-  load(file="../output/feature_train.RData")
+  load(file="../output/feature_set0_train.RData")
 }
-
-tm_feature_test <- NA
+tm_feature0_test <- NA
 if(run.feature.test){
-  tm_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx))
-  save(dat_test, file="../output/feature_test.RData")
+  tm_feature0_test <- system.time(feature0_test <- feature(fiducial_pt_list, test_idx))
+  save(feature0_test, file="../output/feature_set0_test.RData")
 }else{
-  load(file="../output/feature_test.RData")
+  load(file="../output/feature_set0_test.RData")
 }
+```
 
 
+```{r feature1}
+# read feature set 1
+tm_feature1_train <- NA
+if(run.feature.train){
+  tm_feature1_train <- system.time(feature1_train <- GetPairwiseFeature(fiducial_pt_list, train_idx))
+  save(feature1_train, file="../output/feature_set1_train.RData")
+}else{
+  load(file="../output/feature_set1_train.RData")
+}
+tm_feature1_test <- NA
+if(run.feature.test){
+  tm_feature1_test <- system.time(feature1_test <- GetPairwiseFeature(fiducial_pt_list, test_idx))
+  save(feature1_test, file="../output/feature_set1_test.RData")
+}else{
+  load(file="../output/feature_set1_test.RData")
+}
 ```
 
 ### Step 4: Train a classification model with training features and responses
@@ -189,6 +234,14 @@ Call the train model and test model from library.
 source("../lib/train.R") 
 source("../lib/test.R")
 ```
+
+Added by Yibai
+```{r baseline gbm}
+model_gbm <- train_gbm(feature0_train, feature0_train$label, cv = 5, n = 100)
+print(model_gbm)
+gbm.perf(model_gbm, method = "cv")
+```
+
 
 #### Model selection with cross-validation
 * Do model selection by choosing among different values of training model parameters.
