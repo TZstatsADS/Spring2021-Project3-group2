@@ -59,6 +59,20 @@ def train(model, X:np.array, y:np.array):
     return(fitted, tm)
 #========================================================================
 def resample(model, X:np.array, y:np.array, model2 = None):
+        """
+        Generates a balanced sample by resampling X, y
+        
+        inputs:
+        ---------------------
+        model: resampling method instance
+        
+        X: array of features
+        
+        y: array of response
+        
+        model2: resampling method instance, optional additional method
+        """
+        
         start = time.time()
         Xr, yr = model.fit_resample(X, y)
         print("Time for oversampling:", round(time.time()-start,4), "s")
@@ -90,7 +104,7 @@ over1_gbm = GradientBoostingClassifier(n_estimators = 300,
                                           learning_rate = 0.1, 
                                           #n_iter_no_change=10, tol=0.01, # early stop
                                           random_state=RANDOM_STATE)
-# = =======================================================
+# = ===========================================================================
 base_LR = LogisticRegression(n_jobs=-1, 
                         random_state=RANDOM_STATE)
 LR = LogisticRegression(#class_weight = CLASS_WEIGHT,
@@ -98,3 +112,14 @@ LR = LogisticRegression(#class_weight = CLASS_WEIGHT,
                         solver = 'liblinear',
                         n_jobs=-1, 
                         random_state=RANDOM_STATE)
+# ==============================================================================
+baseline_svc = SVC(random_state = RANDOM_STATE)
+svc = SVC(C = 1, degree = 6, gamma = 'scale', 
+                        kernel = 'poly', 
+                        random_state=RANDOM_STATE)
+# ==============================================================================
+baseline_ada = AdaBoostClassifier(random_state = RANDOM_STATE)
+ADA = AdaBoostClassifier(base_estimator = BaggingClassifier(),
+                        learning_rate = 1,
+                        n_estimators = 100, 
+                        random_state = RANDOM_STATE)

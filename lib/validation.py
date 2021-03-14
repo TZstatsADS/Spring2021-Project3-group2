@@ -57,7 +57,7 @@ METRICS = [
 
 def kfold_cv(model, X:np.array, y:np.array, K:int, lb:str, plot_roc = True, sample_weight=np.empty([1,])):
     """
-    Generate a plot of ROC curves if plot_roc == True: the ROC curves for each fold, the mean ROC curve,
+    Generates a plot of ROC curves if plot_roc == True: the ROC curves for each fold, the mean ROC curve,
     the 2 standard deviation range of auc
 
     Inputs
@@ -161,9 +161,23 @@ param_grid_gbm = {
               }
 
 param_grid_lr = {
-	'C': [1e-3, 1e-2, 1e-1, 1e0],
-    	'solver': ['lbfgs', 'liblinear'],
-                'max_iter': [50, 100, 200],
-                #'random_state': [RANDOM_STATE],
-                'n_jobs': [-1]
-      	}
+    'C': [1e-3, 1e-2, 1e-1, 1e0],
+    'solver': ['lbfgs', 'liblinear'],
+    'max_iter': [50, 100, 200],
+    #'random_state': [RANDOM_STATE],
+    'n_jobs': [-1]
+    }
+
+param_grid_svc = {
+    'C': [1],
+    'kernel': ['poly'],
+    'degree': [4, 5, 6],
+    #'class_weight': [{1: 4}, None],
+    'gamma': ['scale']
+    }
+    
+param_grid_ada = {
+    'base_estimator':[RandomForestClassifier(), BaggingClassifier(), ExtraTreesClassifier()],
+    'n_estimators':[50,100],
+    'learning_rate':[1e-1, 1]
+    }
