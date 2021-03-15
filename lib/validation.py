@@ -22,13 +22,11 @@ from imblearn.under_sampling import RandomUnderSampler
 
 import sklearn.preprocessing
 #from sklearn.linear_model import Ridge
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, BaggingClassifier, ExtraTreesClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, roc_curve, plot_roc_curve, auc, pairwise_distances
 from sklearn.model_selection import train_test_split, validation_curve, GridSearchCV, KFold
 from sklearn.pipeline import make_pipeline, Pipeline
-from sklearn.ensemble import BaggingClassifier
-from sklearn.ensemble import ExtraTreesClassifier
 
 
 
@@ -195,4 +193,9 @@ param_grid_sgd = {
     'loss': ['hinge','log','modified_huber','perceptron'],
     'penalty': ['l2','l1','elasticnet'],
     'alpha': [1e-4, 1e-5]
+    }
+
+param_grid_LDA = {
+    'solver': ['svd', 'lsqr', 'eigen'],
+    'shrinkage': [0.1, 0.3, 0.6, 0.9],
     }

@@ -22,15 +22,13 @@ from imblearn.under_sampling import RandomUnderSampler
 
 import sklearn.preprocessing
 #from sklearn.linear_model import Ridge
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, ExtraTreesClassifier, AdaBoostClassifier, BaggingClassifier
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import classification_report, roc_curve, plot_roc_curve, auc, pairwise_distances
 from sklearn.model_selection import train_test_split, validation_curve, GridSearchCV, KFold
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.svm import SVC
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.ensemble import AdaBoostClassifier
-from sklearn.ensemble import BaggingClassifier
 
 
 scoring = ['accuracy', 'precision', 'recall', 'roc_auc']
@@ -102,7 +100,7 @@ ADA = AdaBoostClassifier(base_estimator = BaggingClassifier(),
                         learning_rate = 1,
                         n_estimators = 200, 
                         random_state = RANDOM_STATE)
-<<<<<<< HEAD
+#<<<<<<< HEAD
 # ==============================================================================
 baseline_bag = BaggingClassifier(n_jobs = -1, random_state = RANDOM_STATE)
 BAG = BaggingClassifier(base_estimator = ExtraTreesClassifier(),
@@ -116,10 +114,10 @@ SGD = SGDClassifier(loss = 'modified_huber',
                         penalty = 'l2',
                         alpha = 1e-5,
                         n_jobs=-1, random_state= RANDOM_STATE)
-=======
+#=======
 
 # ==============================================================================                           
-lda = LinearDiscriminantAnalysis(solver='eigen',
+LDA = LinearDiscriminantAnalysis(solver='eigen',
                                  shrinkage=0.1,
                                  n_components=1)
->>>>>>> 935a8285a5a45201e439c2812ebd2d8bf3113198
+#>>>>>>> 935a8285a5a45201e439c2812ebd2d8bf3113198

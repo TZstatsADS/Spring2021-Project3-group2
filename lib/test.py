@@ -52,6 +52,5 @@ METRICS = [
 ]
 #=======================================================
 def predict_class(model, X:np.array, y:np.array, prob = False):
-
-print("Time for grid search:", round(time.time()-start,4), "s")
+    print("Time for grid search:", round(time.time()-start,4), "s")
 	
