@@ -58,7 +58,7 @@ library(ROSE)
 ### Step 0 set work directories
 ```{r wkdir, eval=FALSE}
 set.seed(2021)
-#setwd("../doc")
+#setwd("E:/project3/Spring2021-Project3-group-2/doc")
 ```
 
 Provide directories for training images. Training images and Training fiducial points will be in different subfolders. 
@@ -222,15 +222,21 @@ if(run.test){
 ##evaluation
 test_label <- dat_test$label
 accu <- mean(test_label == pred_rf)
-accu_sd <- sd(test_label == pred_rf)
+accu_sd <- res_cv_total$`mean error`[6]
 tpr.fpr <- WeightedROC(as.numeric(pred_rf), test_label)
 auc <- WeightedAUC(tpr.fpr)
+auc_sd<-res_cv_total$`sd error`[6]
 
 
-cat("Mean accuracy:",accu*100, "%.\n")
+cat("Accuracy:",accu*100, "%.\n")
 cat("SD of accuracy:",accu_sd, "\n")
-cat("Mean AUC:", auc, ".\n")
+cat("AUC:", auc, ".\n")
+cat("SD of AUC:", auc_sd, ".\n")
 ```
+Accuracy: 79 %.
+SD of accuracy: 0.0575 
+AUC: 0.5543608 .
+SD of AUC: 0.01118034
 
 ### Summarize Running Time
 Prediction performance matters, so does the running times for constructing features and for training the model, especially when the computation resource is limited. 
@@ -240,7 +246,10 @@ cat("Time for constructing testing features=", time_feature_test[1], "s \n")
 cat("Time for training model=", time_train[1], "s \n") 
 cat("Time for testing model=", time_test[1], "s \n")
 ```
-
+Time for constructing training features= 1.74 s 
+Time for constructing testing features= 0.17 s 
+Time for training model= 122.32 s 
+Time for testing model= 0.41 s 
 ###Reference
 - Du, S., Tao, Y., & Martinez, A. M. (2014). Compound facial expressions of emotion. Proceedings of the National Academy of Sciences, 111(15), E1454-E1462.
 
