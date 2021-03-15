@@ -1,0 +1,492 @@
+---
+title: "Main"
+author: "HAO HU"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+In your final repo, there should be an R markdown file that organizes **all computational steps** for evaluating your proposed Facial Expression Recognition framework. 
+
+This file is currently a template for running evaluation experiments. You should update it according to your codes but following precisely the same structure. 
+
+## Trying to use SVM
+
+```{r, message=FALSE, echo=F}
+if(!require("EBImage")){
+  install.packages("BiocManager")
+  BiocManager::install("EBImage")
+}
+if(!require("R.matlab")){
+  install.packages("R.matlab")
+}
+if(!require("readxl")){
+  install.packages("readxl")
+}
+
+if(!require("dplyr")){
+  install.packages("dplyr")
+}
+if(!require("readxl")){
+  install.packages("readxl")
+}
+
+if(!require("ggplot2")){
+  install.packages("ggplot2")
+}
+
+if(!require("caret")){
+  install.packages("caret")
+}
+
+if(!require("glmnet")){
+  install.packages("glmnet")
+}
+
+if(!require("WeightedROC")){
+  install.packages("WeightedROC")
+}
+
+if(!require("gbm")){
+  install.packages("gbm")
+}
+
+if(!require("mltools")){
+  install.packages("mltools")
+}
+
+if(!require("ROSE")){
+  install.packages("ROSE")
+}
+
+if(!require("e1071")){
+  install.packages("e1071")
+}
+
+library(R.matlab)
+library(readxl)
+library(dplyr)
+library(EBImage)
+library(ggplot2)
+library(caret)
+library(glmnet)
+library(WeightedROC)
+library(gbm)
+library(mltools)
+library(ROSE)
+library(e1071)
+```
+
+
+
+```{r wkdir, eval=FALSE}
+set.seed(2020)
+#setwd("C:/Users/sluo1/Desktop/5243/other/Spring2021-Project3-group-2")
+# here replace it with your own path or manually set it in RStudio to where this rmd file is located. 
+# use relative path for reproducibility
+```
+
+
+Provide directories for training images. Training images and Training fiducial points will be in different subfolders. 
+```{r}
+# This will be modified for test data.
+train_dir <- "../data/train_set/" 
+train_image_dir <- paste(train_dir, "images/", sep="")
+train_pt_dir <- paste(train_dir,  "points/", sep="")
+train_label_path <- paste(train_dir, "label.csv", sep="") 
+```
+
+
+#### Model selection with cross-validation
+```{r exp_setup}
+run.cv <- TRUE # run cross-validation on the training set
+sample.reweight <- TRUE # run sample reweighting in model training
+K <- 5  # number of CV folds
+run.feature.train <- TRUE # process features for training set
+run.test <- TRUE # run evaluation on an independent test set
+run.feature.test <- TRUE # process features for test set
+
+
+
+#run.cv.svm <- TRUE # run cross-validation on the training set for svm
+#run.train.svm <- TRUE # run evaluation on entire train set
+#run.test.svm <- TRUE # run evaluation on an independent test set
+#run.cv.pca <-TRUE # calculate pca
+
+
+run.fudicial.list <- TRUE
+#sample.reweight <- TRUE # run sample reweighting in model training
+```
+
+
+#### import data and train-test split**
+
+We splitted the data to 2000 (80%) for training and 500 (20%) for test.
+
+```{r}
+#train-test split
+
+info <- read.csv(train_label_path)
+n <- nrow(info)
+n_train <- round(n*(4/5), 0)
+train_idx <- sample(info$Index, n_train, replace = F)
+test_idx <- setdiff(info$Index, train_idx)
+
+
+```
+
+Fiducial points are stored in matlab format. In this step, we read them and store them in a list.
+
+```{r}
+n_files <- length(list.files(train_image_dir))
+
+if (run.fudicial.list){
+    readMat.matrix <- function(index){
+        return(round(readMat(paste0(train_pt_dir, sprintf("%04d", index), ".mat"))[[1]],0))
+}
+    fiducial_pt_list <- lapply(1:n_files, readMat.matrix)
+    save(fiducial_pt_list, file="../output/fiducial_pt_list.RData")
+    # otherwise load the data stored for convenience
+} else {
+    load(file="../output/fiducial_pt_list.RData")
+}
+```
+
+### Start from here
+
+```{r}
+load("../output/fiducial_pt_list.RData")
+```
+
+
+### feature construction
+
+This step is converting 78 fiducial points to distances as 6006 features (3003 horizontal distances and 3003 vertical distances).
+
+```{r}
+
+source("../lib/feature.R")
+tm_feature_train <- NA
+if(run.feature.train){
+  tm_feature_train <- system.time(dat_train <- feature(fiducial_pt_list, train_idx))
+  save(dat_train, tm_feature_train, file="../output/feature_train.RData")
+}else{
+  load(file="../output/feature_train.RData")
+}
+
+tm_feature_test <- NA
+if(run.feature.test){
+  tm_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx))
+  save(dat_test, tm_feature_test, file="../output/feature_test.RData")
+}else{
+  load(file="../output/feature_test.RData")
+}
+
+```
+
+
+
+
+
+#### Part 1 SVM Baseline
+
+```{r loadlib_2}
+source("../lib/SVM_model.R")
+```
+
+``` {r svm run.cv, eval=FALSE}
+# SVM Cross-validation
+cost = c(0.00001, 0.0001, 0.001, 0.01, 0.1)
+model_labels_svm = paste("SVM with cost =", cost) 
+model_labels_svm
+
+#We can omit this part if we already run that
+
+ err_svm <- matrix(0, nrow = length(cost), ncol = 2)
+ for(i in 1:length(cost)){
+    print(paste("cost=", cost[i]))
+    err_svm[i,] <- CV_SVM(dat_train, K=5, cost[i])
+    save(err_svm, file="../output/err_svm.RData")
+  }
+```
+
+```{r svm cv visualization}
+#Load visualization of cross validation results of svm
+load("../output/err_svm.RData")
+err_svm <- as.data.frame(err_svm)
+colnames(err_svm) <- c("mean_error", "sd_error")
+cost = c(0.00001, 0.0001, 0.001, 0.01, 0.1)
+err_svm$cost = as.factor(cost)
+err_svm %>% ggplot(aes(x = cost, y = mean_error, ymin = mean_error - sd_error, ymax = mean_error + sd_error)) +
+    geom_crossbar() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Find the best cost for SVM model and Run training and testing, then save them as RDS files. In order to save time, I commend out this chunk of code
+```{r svm best_model}
+#We can omit this part if we already run that
+
+ cost_best_svm <- cost[which.min(err_svm[,1])]
+ #par_best_svm <- list(cost = cost_best_svm)
+ # Training 
+ tm_train_svm = NA
+ tm_train_svm <- system.time(fit_train_svm <- svm(label ~., data = dat_train, kernel = "linear", cost = cost_best_svm) )
+# # Testing
+ tm_test_svm=NA
+ tm_test_svm <- system.time(pred_svm <- predict(fit_train_svm, dat_test))
+ #Save and load 
+ saveRDS(tm_train_svm, "../output/tm_train_svm.RDS")
+ saveRDS(tm_test_svm, "../output/tm_test_svm.RDS")
+ saveRDS(fit_train_svm, "../output/fit_train_svm.RDS")
+ saveRDS(pred_svm, "../output/pred_svm.RDS")
+```
+
+```{r}
+# load models and training and testing time
+tm_train_svm <- readRDS("../output/tm_train_svm.RDS")
+tm_test_svm <- readRDS("../output/tm_test_svm.RDS")
+fit_train_svm <- readRDS("../output/fit_train_svm.RDS")
+pred_svm <- readRDS("../output/pred_svm.RDS")
+
+# Evaluation
+accu_svm <- mean(dat_test$label == pred_svm)
+real_label = dat_test$label %>% as.character() %>% as.numeric()
+pred_value_svm  = pred_svm %>% as.character() %>% as.numeric()
+confusionMatrix(pred_svm,dat_test$label)
+cost_choose <- cost[which.min(err_svm[,1])]
+cat("The accuracy of model: cost =", cost_choose, "is", accu_svm*100, "%.\n")
+
+# The AUC for SVM model
+
+AUC_SVM = auc_roc(real_label, pred_value_svm)
+AUC_SVM 
+```
+
+### Summarize Running Time
+Prediction performance matters, so does the running times for constructing features and for training the model, especially when the computation resource is limited.
+
+
+```{r running_time_2}
+Model_performace <- function(time_feature_train, time_feature_test, time_train, time_test){
+  cat("Time for constructing training features=", time_feature_train[1], "s \n")
+  cat("Time for constructing testing features=", time_feature_test[1], "s \n")
+  cat("Time for training model=", time_train[1], "s \n") 
+  cat("Time for testing model=", time_test[1], "s \n")
+} 
+cat("The accuracy of the SVM model: cost =", cost[which.min(err_svm[,1])], "is", accu_svm*100, "%.\n")
+cat("The auc value for the SVM model is",AUC_SVM * 100, "%.\n")
+Model_performace(tm_feature_train, tm_feature_test, tm_train_svm, tm_test_svm)
+```
+The accuracy of the SVM model: cost = 0.001 is 86.16667 %.
+The auc value for the SVM model is 83.55632 %.
+Time for constructing training features= 0.7 s 
+Time for constructing testing features= 0.14 s 
+Time for training model= 75.56 s 
+Time for testing model= 6.35 s 
+
+
+## Part 2: SVM + Weighted
+
+```{r}
+source("../lib/SVM_model_weighted.R") 
+```
+
+``` {r svm_weight run.cv, eval=FALSE, warning = FALSE}
+#We can omit this part if we already run that
+
+ #SVM Cross-validation
+ cost = c(0.00001,0.0001,0.001,0.01,0.1,1)
+ err_svm_weight <- matrix(0, nrow = length(cost), ncol = 2)
+ for(i in 1:length(cost)){
+    print(paste("cost:", cost[i]))
+    err_svm_weight[i,] <- CV_SVM_weight(dat_train, K = 5, cost[i])
+    saveRDS(err_svm_weight, file="../output/err_svm_weight.RDS")
+ }
+ err_svm_weight
+ cost_best_svm_weight <- cost[which.min(err_svm_weight[,1])]
+ saveRDS(cost_best_svm_weight, file="../output/cost_best_svm_weight.RDS")
+```
+
+
+```{r svm_weight best_model}
+
+
+
+cost_best_svm_weight <- readRDS("../output/cost_best_svm_weight.RDS")
+tm_train_svm_weight = NA
+temp_weight <- ovun.sample(label ~ ., data = dat_train, method = "over", p = 0.3)$data
+tm_train_svm_weight <- system.time(fit_train_svm_weight <- svm(label ~., data = temp_weight, kernel = "linear", cost = cost_best_svm_weight) )
+#Save and load model
+saveRDS(fit_train_svm_weight, "../output/fit_train_svm_weight.RDS")
+```
+
+
+
+```{r svm_weight Performance}
+fit_train_svm_weight <- readRDS("../output/fit_train_svm_weight.RDS")
+# Testing 
+tm_test_svm_weight = NA
+tm_test_svm_weight <- system.time(pred_svm_weight <- predict(fit_train_svm_weight, dat_test))
+
+# Evaluation
+accu_svm_weight <- mean(dat_test$label == pred_svm_weight)
+accu_svm_weight 
+
+pred_value_svm_weight  = pred_svm_weight %>% as.character() %>% as.numeric()
+real_label = dat_test$label %>% as.character() %>% as.numeric()
+
+confusionMatrix(pred_svm_weight, dat_test$label)
+
+print(paste("The accuracy of model: cost =", cost_best_svm_weight, "is", accu_svm_weight * 100, "%"))
+
+# The AUC for SVM model
+AUC_SVM_weight = auc_roc(real_label, pred_value_svm_weight)
+AUC_SVM_weight
+
+```
+### Summarize Running Time  
+Prediction performance matters, so does the running times for constructing features and for training the model, especially when the computation resource is limited.  
+```{r svm_weight results}
+print(paste("The accuracy of the SVM improved model: cost =", cost_best_svm_weight , "is", accu_svm_weight * 100, "%"))
+print(paste("The auc value for tje SVM improved model is", AUC_SVM_weight * 100, "%"))
+Model_performace(tm_feature_train, tm_feature_test, tm_train_svm_weight, tm_test_svm_weight)
+
+```
+[1] "The accuracy of the SVM improved model: cost = 1 is 74 %"
+[1] "The auc value for tje SVM improved model is 60 %"
+Time for constructing training features= 0.7 s 
+Time for constructing testing features= 0.14 s 
+Time for training model= 103.41 s 
+Time for testing model= 5.76 s 
+
+## Part 3: SVM + PCA + Weighted
+
+#### construct features and responses 
+
+```{r feature_2}
+source("../lib/feature_improved_PCA.R") # change file name
+data_test_imp <- dat_test[ ,-ncol(dat_test)]
+data_train_imp <- dat_train[ ,-ncol(dat_train)]
+run.feature.train_imp = TRUE
+tm_feature_train_imp <- NA
+if(run.feature.train_imp){
+  tm_feature_train_imp <- system.time(data_train_imp <- feature_improved(data_train_imp, index = NULL))
+}
+
+
+index_train_pca <- ncol(data_train_imp) 
+
+tm_feature_test_improved <- NA
+run.feature.test_imp = TRUE
+if(run.feature.test_imp){
+  tm_feature_test_imp <- system.time(data_test_imp <- feature_improved(data_test_imp, index = index_train_pca))
+}
+
+save(data_train_imp, file="../output/feature_train_imp.RData")
+save(data_test_imp, file="../output/feature_test_imp.RData")
+saveRDS(tm_feature_train_imp, file="../output/tm_feature_train_imp.RDS")
+saveRDS(tm_feature_test_imp, file="../output/tm_feature_test_imp.RDS")
+
+data_train_imp <- as.data.frame(data_train_imp)
+data_train_imp$label <- dat_train$label
+colnames(data_train_imp)
+
+data_test_imp <- as.data.frame(data_test_imp)
+data_test_imp$label <- dat_test$label
+colnames(data_test_imp)
+
+tm_feature_train_imp <- readRDS("../output/tm_feature_train_imp.RDS")
+tm_feature_test_imp <- readRDS("../output/tm_feature_test_imp.RDS")
+```
+
+#### Train a classification model with training features and responses 
+
+```{r}
+source("../lib/SVM_model_weighted.R") 
+```
+
+``` {r svm_improved run.cv, eval=FALSE}
+#We can omit this part if we already run that
+
+ #SVM Cross-validation
+ cost = c(0.00001,0.0001,0.001,0.01,0.1,1)
+ err_svm_imp <- matrix(0, nrow = length(cost), ncol = 2)
+ for(i in 1:length(cost)){
+    print(paste("cost:", cost[i]))
+    err_svm_imp[i,] <- CV_SVM_weight(data_train_imp, K = 5, cost[i])
+    saveRDS(err_svm_imp, file="../output/err_svm_imp.RDS")
+ }
+
+err_svm_imp <- readRDS("../output/err_svm_imp.RDS")
+err_svm_imp
+cost_best_svm_imp <- cost[which.min(err_svm_imp[,1])]
+saveRDS(cost_best_svm_imp, file="../output/cost_best_svm_imp.RDS")
+
+```
+
+```{r svm_imp best_model}
+cost_best_svm_imp <- readRDS("../output/cost_best_svm_imp.RDS")
+# Training
+tm_train_svm_imp = NA
+temp <- ovun.sample(label ~ ., data = data_train_imp, method = "over", p = 0.3)$data
+tm_train_svm_imp <- system.time(fit_train_svm_imp <- svm(label ~., data = temp, kernel = "linear", cost = cost_best_svm_imp) )
+#Save and load model
+saveRDS(fit_train_svm_imp, "../output/fit_train_svm_imp.RDS")
+saveRDS(tm_train_svm_imp, "../output/tm_train_svm_imp.RDS")
+```
+
+```{r}
+fit_train_svm_imp <- readRDS("../output/fit_train_svm_imp.RDS")
+tm_train_svm_imp <- readRDS("../output/tm_train_svm_imp.RDS")
+# Testing 
+tm_test_svm_imp = NA
+tm_test_svm_imp <- system.time(pred_svm_imp <- predict(fit_train_svm_imp, data_test_imp))
+saveRDS(tm_test_svm_imp, "../output/tm_test_svm_imp.RDS")
+tm_test_svm_imp <- readRDS("../output/tm_test_svm_imp.RDS")
+
+# Evaluation
+accu_svm_imp <- mean(dat_test$label == pred_svm_imp)
+accu_svm_imp 
+
+pred_value_svm_imp  = pred_svm_imp %>% as.character() %>% as.numeric()
+real_label = dat_test$label %>% as.character() %>% as.numeric()
+
+confusionMatrix(pred_svm_imp, dat_test$label)
+
+print(paste("The accuracy of model: cost =", cost_best_svm_imp, "is", accu_svm_imp * 100, "%"))
+
+# The AUC for SVM model
+AUC_SVM_imp = auc_roc(real_label, pred_value_svm_imp)
+AUC_SVM_imp
+
+```
+### Summarize Running Time  
+Prediction performance matters, so does the running times for constructing features and for training the model, especially when the computation resource is limited.  
+```{r running_time_3}
+
+print(paste("The accuracy of the SVM improved model: cost =", cost_best_svm_imp , "is", accu_svm_imp * 100, "%"))
+print(paste("The auc value for tje SVM improved model is", AUC_SVM_imp * 100, "%"))
+Model_performace(tm_feature_train_imp, tm_feature_test_imp, tm_train_svm_imp, tm_test_svm_imp)
+
+```
+[1] "The accuracy of the SVM improved model: cost = 0.01 is 77.5 %"
+[1] "The auc value for tje SVM improved model is 51.651376146789 %"
+Time for constructing training features= 112.63 s 
+Time for constructing testing features= 6.03 s 
+Time for training model= 0.56 s 
+Time for testing model= 0.05 s 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,246 @@
+---
+title: "Random Forest"
+author: "Siyuan Sang"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+```{r message=FALSE}
+if(!require("EBImage")){
+  install.packages("BiocManager")
+  BiocManager::install("EBImage")
+}
+if(!require("R.matlab")){
+  install.packages("R.matlab")
+}
+if(!require("readxl")){
+  install.packages("readxl")
+}
+
+if(!require("dplyr")){
+  install.packages("dplyr")
+}
+if(!require("readxl")){
+  install.packages("readxl")
+}
+
+if(!require("ggplot2")){
+  install.packages("ggplot2")
+}
+
+if(!require("caret")){
+  install.packages("caret")
+}
+
+if(!require("glmnet")){
+  install.packages("glmnet")
+}
+
+if(!require("WeightedROC")){
+  install.packages("WeightedROC")
+}
+
+library(R.matlab)
+library(readxl)
+library(dplyr)
+library(EBImage)
+library(ggplot2)
+library(caret)
+library(glmnet)
+library(WeightedROC)
+library(randomForest)
+library(ROSE)
+```
+
+### Step 0 set work directories
+```{r wkdir, eval=FALSE}
+set.seed(2021)
+#setwd("../doc")
+```
+
+Provide directories for training images. Training images and Training fiducial points will be in different subfolders. 
+```{r}
+train_dir <- "../data/train_set/"
+train_image_dir <- paste(train_dir, "images/", sep="")
+train_pt_dir <- paste(train_dir,  "points/", sep="")
+train_label_path <- paste(train_dir, "label.csv", sep="") 
+```
+
+### Step 1: set up controls for evaluation experiments.
+
+```{r exp_setup}
+run.cv <- TRUE # run cross-validation on the training set
+sample.reweight <- TRUE # run sample reweighting in model training
+K <- 5  # number of CV folds
+run.feature.train <- TRUE # process features for training set
+run.test <- TRUE # run evaluation on an independent test set
+run.feature.test <- TRUE # process features for test set
+```
+
+### Step 2: import data and train-test split 
+```{r}
+#Import the number of images and numbers of trees to determine later.
+ntree = c(50,75,100)
+n_files <- length(list.files(train_image_dir))-1
+```
+
+```{r}
+#train-test split
+info <- read.csv(train_label_path)
+n <- nrow(info)
+n_train <- round(n*(4/5), 0)
+set.seed(0)
+train_idx <- sample(info$Index, n_train, replace = F)
+test_idx <- setdiff(info$Index, train_idx)
+```
+
+
+Fiducial points are stored in matlab format. In this step, we read them and store them in a list.
+```{r read fiducial points}
+#function to read fiducial points
+#input: index
+#output: matrix of fiducial points corresponding to the index
+readMat.matrix <- function(index){
+     return(round(readMat(paste0(train_pt_dir, sprintf("%04d", index), ".mat"))[[1]],0))
+}
+
+#load fiducial points
+fiducial_pt_list <- lapply(1:n_files, readMat.matrix)
+save(fiducial_pt_list, file="../output/fiducial_pt_list.RData")
+```
+
+### Step 3: construct features and responses
+
+
+```{r feature}
+source("../lib/feature.R")
+time_feature_train <- NA
+if(run.feature.train){
+  time_feature_train <- system.time(dat_train <- feature(fiducial_pt_list, train_idx))
+  save(dat_train, file="../output/feature_train.RData")
+}else{
+  load(file="../output/feature_train.RData")
+}
+
+time_feature_test <- NA
+if(run.feature.test){
+  time_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx))
+  save(dat_test, file="../output/feature_test.RData")
+}else{
+  load(file="../output/feature_test.RData")
+}
+```
+
+
+
+### Step 4: Train a classification model with training features and responses
+
+```{r}
+source("../lib/train_rf.R")
+source("../lib/test_rf.R")
+source("../lib/cross_validation_rf.R")
+source("../lib/cross_validation_rf_w.R")
+```
+
+#### First we need to determine the best model
+
+```{r include=FALSE}
+#Model selection with cross-validation without weighting
+if(run.cv){
+  cvrf_res <- matrix(0, nrow = length(ntree), ncol = 2)
+  for(i in 1:length(ntree)){
+    cat("Number of trees=", ntree[i], "\n")
+    cvrf_res[i,] <- cvrf.function(dat_train, K, ntree[i])
+  save(cvrf_res, file="../output/cvrf_res.RData")
+  }
+}
+```
+
+```{r}
+#get the result
+#load(file="../output/cvrf_res.RData")
+cvrf_res <- as.data.frame(cvrf_res)
+colnames(cvrf_res) <- c("mean error", "sd error")
+cvrf_res$ntree<-as.integer(ntree)
+cvrf_res
+```
+
+
+```{r include=FALSE}
+# Model selection with cross-validation with weighting
+if(sample.reweight){
+  cvrf_res_w <- matrix(0, nrow = length(ntree), ncol = 2)
+  for(i in 1:length(ntree)){
+    cat("Number of trees=", ntree[i], "\n")
+    cvrf_res_w[i,] <- cvrf_w.function(dat_train, K, ntree[i])
+  save(cvrf_res_w, file="../output/cvrf_res_w.RData")
+  }
+}
+```
+
+```{r}
+#get the result
+#load(file="../output/cvrf_res_w.RData")
+cvrf_res_w <- as.data.frame(cvrf_res_w)
+colnames(cvrf_res_w) <- c("mean error", "sd error")
+cvrf_res_w$ntree<-as.integer(ntree)
+cvrf_res_w
+```
+
+```{r}
+#determine the best model
+if(run.cv){
+  res_cv_total <- rbind(cvrf_res,cvrf_res_w)
+  ntree_best <- res_cv_total$ntree[which.min(res_cv_total[,1])]
+}
+cat('The number of tree we choose is', ntree_best)
+save(ntree_best,file = "../output/ntree_best_rf.Rdata")
+```
+
+
+#### After determining the best model, we train the classifier and evaluate it.
+```{r}
+##Training
+time_train=NA
+time_train <- system.time(rf_train <- train_rf(dat_train, ntree_best))
+save(rf_train, file="../output/rf_train.RData")
+
+##Testing
+time_test=NA
+if(run.test){
+  load(file="../output/rf_train.RData")
+  time_test <- system.time(pred_rf <- predict(rf_train,dat_test))
+}
+
+
+```
+
+```{r }
+##evaluation
+test_label <- dat_test$label
+accu <- mean(test_label == pred_rf)
+accu_sd <- sd(test_label == pred_rf)
+tpr.fpr <- WeightedROC(as.numeric(pred_rf), test_label)
+auc <- WeightedAUC(tpr.fpr)
+
+
+cat("Mean accuracy:",accu*100, "%.\n")
+cat("SD of accuracy:",accu_sd, "\n")
+cat("Mean AUC:", auc, ".\n")
+```
+
+### Summarize Running Time
+Prediction performance matters, so does the running times for constructing features and for training the model, especially when the computation resource is limited. 
+```{r running_time}
+cat("Time for constructing training features=", time_feature_train[1], "s \n")
+cat("Time for constructing testing features=", time_feature_test[1], "s \n")
+cat("Time for training model=", time_train[1], "s \n") 
+cat("Time for testing model=", time_test[1], "s \n")
+```
+
+###Reference
+- Du, S., Tao, Y., & Martinez, A. M. (2014). Compound facial expressions of emotion. Proceedings of the National Academy of Sciences, 111(15), E1454-E1462.
+
