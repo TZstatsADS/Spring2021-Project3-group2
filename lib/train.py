@@ -27,6 +27,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, roc_curve, plot_roc_curve, auc, pairwise_distances
 from sklearn.model_selection import train_test_split, validation_curve, GridSearchCV, KFold
 from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn.svm import SVC
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import BaggingClassifier
 
 
 scoring = ['accuracy', 'precision', 'recall', 'roc_auc']
@@ -63,7 +67,7 @@ def train(model, X:np.array, y:np.array):
 
 baseline_gbm = GradientBoostingClassifier(learning_rate = 0.1, n_iter_no_change=10, tol=0.01, #early stop
 	random_state=RANDOM_STATE)
-                                          
+
 
 #=Model2: improved gbm======================================================
 improved_gbm = GradientBoostingClassifier(n_estimators = 100,
@@ -98,16 +102,4 @@ ADA = AdaBoostClassifier(base_estimator = BaggingClassifier(),
                         learning_rate = 1,
                         n_estimators = 200, 
                         random_state = RANDOM_STATE)
-# ==============================================================================
-baseline_bag = BaggingClassifier(n_jobs = -1, random_state = RANDOM_STATE)
-BAG = BaggingClassifier(base_estimator = ExtraTreesClassifier(),
-                        max_samples=0.8,
-                        n_estimators=200,
-                        n_jobs=-1, random_state= RANDOM_STATE,
-                        max_features = 0.9)
-# ==============================================================================
-baseline_sgd = SGDClassifier(n_jobs = -1, random_state = RANDOM_STATE)
-SGD = SGDClassifier(loss = 'modified_huber',
-                        penalty = 'l2',
-                        alpha = 1e-5,
-                        n_jobs=-1, random_state= RANDOM_STATE)
+

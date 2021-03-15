@@ -6,13 +6,13 @@
 
 Term: Spring 2021
 
-+ Team ##
++ Team 2
 + Team members
-	+ team member 1
-	+ team member 2
-	+ team member 3
-	+ team member 4
-	+ team member 5
+	+ Anh Thu Doan
+	+ Hao Hu
+	+ Yibai Liu
+	+ Feng Rong
+	+ Siyuan Sang
 
 + Project summary: In this project, we created a classification engine for facial emotion recognition. 
 	
