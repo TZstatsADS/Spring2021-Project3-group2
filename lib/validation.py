@@ -27,6 +27,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, roc_curve, plot_roc_curve, auc, pairwise_distances
 from sklearn.model_selection import train_test_split, validation_curve, GridSearchCV, KFold
 from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn.ensemble import BaggingClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+
 
 
 scoring = ['accuracy', 'roc_auc', 'balanced_accuracy', 'precision', 'recall']
@@ -50,7 +53,6 @@ METRICS = [
       tf.keras.metrics.Recall(name='recall'),
       tf.keras.metrics.AUC(name='auc'),
 ]
-
 
 # =========================================================
 # for leave-one-out: run function with K = n
@@ -89,12 +91,12 @@ def kfold_cv(model, X:np.array, y:np.array, K:int, lb:str, plot_roc = True, samp
     
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
-        if sample_weight.any() == False:
-            model.fit(X_train, y_train)
-        else:
-            sample_weight = 10* np.abs(np.random.randn(len(y_train)))
-            sample_weight[np.where(y_train==1)[0]] *= 10
-            model.fit(X_train, y_train, sample_weight=sample_weight)
+#        if sample_weight.any() == False:
+        model.fit(X_train, y_train)
+#        else:
+#            sample_weight = 10* np.abs(np.random.randn(len(y_train)))
+#            sample_weight[np.where(y_train==1)[0]] *= 10
+#            model.fit(X_train, y_train, sample_weight=sample_weight)
         viz = plot_roc_curve(model, X_test, y_test,
                              name='Fold {}'.format(i+1),
                              alpha=0.5, lw=1, ax=ax)

@@ -27,6 +27,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, roc_curve, plot_roc_curve, auc, pairwise_distances
 from sklearn.model_selection import train_test_split, validation_curve, GridSearchCV, KFold
 from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn.svm import SVC
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import BaggingClassifier
 
 
 scoring = ['accuracy', 'precision', 'recall', 'roc_auc']
@@ -88,7 +92,7 @@ def resample(model, X:np.array, y:np.array, model2 = None):
 
 baseline_gbm = GradientBoostingClassifier(learning_rate = 0.1, n_iter_no_change=10, tol=0.01, #early stop
 	random_state=RANDOM_STATE)
-                                          
+
 
 #=Model2: improved gbm======================================================
 improved_gbm = GradientBoostingClassifier(n_estimators = 100,
@@ -123,3 +127,8 @@ ADA = AdaBoostClassifier(base_estimator = BaggingClassifier(),
                         learning_rate = 1,
                         n_estimators = 100, 
                         random_state = RANDOM_STATE)
+
+# ==============================================================================                           
+lda = LinearDiscriminantAnalysis(solver='eigen',
+                                 shrinkage=0.1,
+                                 n_components=1)
