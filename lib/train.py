@@ -102,4 +102,24 @@ ADA = AdaBoostClassifier(base_estimator = BaggingClassifier(),
                         learning_rate = 1,
                         n_estimators = 200, 
                         random_state = RANDOM_STATE)
+<<<<<<< HEAD
+# ==============================================================================
+baseline_bag = BaggingClassifier(n_jobs = -1, random_state = RANDOM_STATE)
+BAG = BaggingClassifier(base_estimator = ExtraTreesClassifier(),
+                        max_samples=0.8,
+                        n_estimators=200,
+                        n_jobs=-1, random_state= RANDOM_STATE,
+                        max_features = 0.9)
+# ==============================================================================
+baseline_sgd = SGDClassifier(n_jobs = -1, random_state = RANDOM_STATE)
+SGD = SGDClassifier(loss = 'modified_huber',
+                        penalty = 'l2',
+                        alpha = 1e-5,
+                        n_jobs=-1, random_state= RANDOM_STATE)
+=======
 
+# ==============================================================================                           
+lda = LinearDiscriminantAnalysis(solver='eigen',
+                                 shrinkage=0.1,
+                                 n_components=1)
+>>>>>>> 935a8285a5a45201e439c2812ebd2d8bf3113198
