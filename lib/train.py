@@ -57,32 +57,7 @@ def train(model, X:np.array, y:np.array):
     fitted = model.fit(X,y)
     tm = round(time.time()-start,4)
     return(fitted, tm)
-#========================================================================
-def resample(model, X:np.array, y:np.array, model2 = None):
-        """
-        Generates a balanced sample by resampling X, y
-        
-        inputs:
-        ---------------------
-        model: resampling method instance
-        
-        X: array of features
-        
-        y: array of response
-        
-        model2: resampling method instance, optional additional method
-        """
-        
-        start = time.time()
-        Xr, yr = model.fit_resample(X, y)
-        print("Time for oversampling:", round(time.time()-start,4), "s")
-        if model2 != None:
-                start = time.time()
-                Xr, yr = model2.fit_resample(Xr, yr)
-                print("Time for undersampling:", round(time.time()-start,4), "s")
 
-        print("Response distribution of resampled data:", dict(Counter(yr)))
-        return(Xr, yr) 
 
 #=Model1: baseline gbm=========================================================
 
@@ -121,5 +96,18 @@ svc = SVC(C = 1, degree = 6, gamma = 'scale',
 baseline_ada = AdaBoostClassifier(random_state = RANDOM_STATE)
 ADA = AdaBoostClassifier(base_estimator = BaggingClassifier(),
                         learning_rate = 1,
-                        n_estimators = 100, 
+                        n_estimators = 200, 
                         random_state = RANDOM_STATE)
+# ==============================================================================
+baseline_bag = BaggingClassifier(n_jobs = -1, random_state = RANDOM_STATE)
+BAG = BaggingClassifier(base_estimator = ExtraTreesClassifier(),
+                        max_samples=0.8,
+                        n_estimators=200,
+                        n_jobs=-1, random_state= RANDOM_STATE,
+                        max_features = 0.9)
+# ==============================================================================
+baseline_sgd = SGDClassifier(n_jobs = -1, random_state = RANDOM_STATE)
+SGD = SGDClassifier(loss = 'modified_huber',
+                        penalty = 'l2',
+                        alpha = 1e-5,
+                        n_jobs=-1, random_state= RANDOM_STATE)

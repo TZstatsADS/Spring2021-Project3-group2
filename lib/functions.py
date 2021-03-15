@@ -100,12 +100,14 @@ def data_prepare(feature_set:np.array):
     X = feature_set[:,0: feature_set.shape[1]-1]
     y = feature_set[:,-1]
     return(X, y)
+
+
 #========================================================
 def p(mean, std):
     """
     Reads two floats mean and std deviation and returns a str for print
     """
-    prt = str(mean) + " (+/-" + str(std) + ")"
+    prt = str(round(mean, 4)) + " (+/-" + str(round(std, 4)) + ")"
     return(prt)
 #========================================================
 def tf_class_weights(n_zeros, n_ones):
@@ -118,4 +120,4 @@ def tf_class_weights(n_zeros, n_ones):
 def initial_bias(n_zeros, n_ones):
     initial_bias = np.log([n_ones/n_zeros])[0]
     return(initial_bias)
-
+#========================================================

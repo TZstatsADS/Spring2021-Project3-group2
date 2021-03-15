@@ -171,13 +171,26 @@ param_grid_lr = {
 param_grid_svc = {
     'C': [1],
     'kernel': ['poly'],
-    'degree': [4, 5, 6],
+    'degree': [5, 6],
     #'class_weight': [{1: 4}, None],
     'gamma': ['scale']
     }
     
 param_grid_ada = {
-    'base_estimator':[RandomForestClassifier(), BaggingClassifier(), ExtraTreesClassifier()],
-    'n_estimators':[50,100],
-    'learning_rate':[1e-1, 1]
+    'base_estimator':[BaggingClassifier(n_jobs=-1), ExtraTreesClassifier()],
+    'n_estimators':[100,200],
+    'learning_rate':[1]
+    }
+
+param_grid_bag = {
+    'base_estimator':[ExtraTreesClassifier()],#, KNeighborsClassifier(),RandomForestClassifier(), 
+    'n_estimators':[100, 200],
+    'max_samples': [0.8], 
+    'max_features':[0.7, 0.9]
+    }
+    
+param_grid_sgd = {
+    'loss': ['hinge','log','modified_huber','perceptron'],
+    'penalty': ['l2','l1','elasticnet'],
+    'alpha': [1e-4, 1e-5]
     }

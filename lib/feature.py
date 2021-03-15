@@ -104,4 +104,31 @@ def select_k(X:np.array, y:np.array, k=100):
         print("Point:", pts+1, ", frequency:", freq)
 
     return(X_reduced)
+    
+#========================================================================
+def resample(model, X:np.array, y:np.array, model2 = None):
+        """
+        Generates a balanced sample by resampling X, y
+        
+        inputs:
+        ---------------------
+        model: resampling method instance
+        
+        X: array of features
+        
+        y: array of response
+        
+        model2: resampling method instance, optional additional method
+        """
+        
+        start = time.time()
+        Xr, yr = model.fit_resample(X, y)
+        print("Time for oversampling:", round(time.time()-start,4), "s")
+        if model2 != None:
+                start = time.time()
+                Xr, yr = model2.fit_resample(Xr, yr)
+                print("Time for undersampling:", round(time.time()-start,4), "s")
+
+        print("Response distribution of resampled data:", dict(Counter(yr)))
+        return(Xr, yr) 
 #====================================================================
