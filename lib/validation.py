@@ -30,7 +30,11 @@ from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import BaggingClassifier
 from sklearn.ensemble import ExtraTreesClassifier
 
+import xgboost as xgb
+from xgboost import XGBClassifier
+from xgboost import XGBRegressor
 
+from sklearn.neighbors import KNeighborsClassifier
 
 scoring = ['accuracy', 'roc_auc', 'balanced_accuracy', 'precision', 'recall']
 
@@ -196,3 +200,19 @@ param_grid_sgd = {
     'penalty': ['l2','l1','elasticnet'],
     'alpha': [1e-4, 1e-5]
     }
+    
+    
+    param_grid_knn = {
+    'n_neighbors': [3, 6, 9, 12],
+    'weights': ['uniform', 'distance'],
+    'metric': ['euclidean', 'manhattan']
+}
+
+
+param_grid_xgb = {
+    'min_child_weight': [1, 5, 10],
+    'gamma': [0.5, 1.0, 1.5],
+    'subsample': [0.6, 0.8, 1.0],
+    'colsample_bytree': [0.6, 0.8, 1.0],
+    'max_depth': [3, 4, 5]    
+}
