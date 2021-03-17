@@ -33,6 +33,12 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import BaggingClassifier
 
 
+import xgboost as xgb
+from xgboost import XGBClassifier
+from xgboost import XGBRegressor
+
+from sklearn.neighbors import KNeighborsClassifier
+
 scoring = ['accuracy', 'precision', 'recall', 'roc_auc']
 
 from tensorflow.keras import datasets, layers, models
@@ -123,3 +129,17 @@ lda = LinearDiscriminantAnalysis(solver='eigen',
                                  shrinkage=0.1,
                                  n_components=1)
 >>>>>>> 935a8285a5a45201e439c2812ebd2d8bf3113198
+
+# ============================================================================== 
+baseline_knn = KNeighborsClassifier(n_neighbors=3)
+KNN = KNeighborsClassifier(metric='manhattan', n_neighbors=3, weights='distance')
+
+
+# ============================================================================== 
+baseline_xgb = XGBClassifier(objective = 'reg:squarederror', colsample_bytree = 0.3,
+   learning_rate=0.1, max_depth=3, alpha=10
+   )
+XGB = XGBClassifier(objective = 'reg:squarederror', colsample_bytree = 0.8, gamma=0.5,
+   learning_rate=0.1, max_depth=5, min_child_weight=1, subsample=1.0, alpha=10
+   )
+ 
