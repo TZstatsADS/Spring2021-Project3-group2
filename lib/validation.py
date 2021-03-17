@@ -24,17 +24,18 @@ import sklearn.preprocessing
 #from sklearn.linear_model import Ridge
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, roc_curve, plot_roc_curve, auc, pairwise_distances
+from sklearn.metrics import classification_report, roc_curve, plot_roc_curve, auc, pairwise_distances,roc_auc_score
 from sklearn.model_selection import train_test_split, validation_curve, GridSearchCV, KFold
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import BaggingClassifier
 from sklearn.ensemble import ExtraTreesClassifier
-
 import xgboost as xgb
 from xgboost import XGBClassifier
 from xgboost import XGBRegressor
 
 from sklearn.neighbors import KNeighborsClassifier
+
+
 
 scoring = ['accuracy', 'roc_auc', 'balanced_accuracy', 'precision', 'recall']
 
@@ -47,6 +48,7 @@ AUTOTUNE = tf.data.experimental.AUTOTUNE
 BATCH_SIZE = 100
 IMG_SIZE = 192
 SHUFFLE_SIZE = 1000
+NUM_EPOCHS = 50
 METRICS = [
       tf.keras.metrics.TruePositives(name='tp'),
       tf.keras.metrics.FalsePositives(name='fp'),
@@ -80,6 +82,20 @@ def kfold_cv(model, X:np.array, y:np.array, K:int, lb:str, plot_roc = True, samp
     
     sample_weight : np.array, parameter applied for specific models like LogisticRegression
     
+    outputs: 
+    -----------
+    mean_fpr: array of false positive rates
+    
+    mean_tpr: array of true positive rates
+    
+    mean_auc: float, mean auc score of k-fold CVs
+    
+    std_auc: float, standard deviation of auc scores from k-fold CVs
+    
+    mean_acc: float, mean accuracy of k-fold CVs
+    
+    std_acc: float, standard deviation of accuracies from k-fold CVs
+    
     """
     
     kf = KFold(n_splits=K, shuffle=True, random_state= RANDOM_STATE)
@@ -95,7 +111,7 @@ def kfold_cv(model, X:np.array, y:np.array, K:int, lb:str, plot_roc = True, samp
     
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
-#        if sample_weight.any() == False:
+#        if sample_weight.all() == False:
         model.fit(X_train, y_train)
 #        else:
 #            sample_weight = 10* np.abs(np.random.randn(len(y_train)))
@@ -148,17 +164,118 @@ def grid_search(X:np.array, y:np.array, model, param_grid:dict, cv=10, print_ste
     if print_step:
         means = search.cv_results_['mean_test_roc_auc']
         stds = search.cv_results_['std_test_roc_auc']
-        acc = search.cv_results_['mean_test_accuracy']
+        acc = search.cv_results_['mean_test_balanced_accuracy']
         for mean, std, acc, params in zip(means, stds, acc, search.cv_results_['params']):
-        		print("AUC %0.3f (+/-%0.03f) and accuracy %0.3f for %r"
+        		print("AUC %0.3f (+/-%0.03f) and balanced_accuracy %0.3f for %r"
              			 % (mean, std * 2, acc, params))
     print("Best %r: %0.3f" % (refit, search.best_score_))
-    if refit != 'accuracy':
-        print("Accuracy: %0.3f" % search.cv_results_['mean_test_accuracy'][search.best_index_])
+    if refit != 'balanced_accuracy':
+        print("Balanced accuracy: %0.3f" % search.cv_results_['mean_test_balanced_accuracy'][search.best_index_])
     print("Best parameters: %r" % search.best_params_)
     return(model.set_params(**search.best_params_))
 
-#========================================================
+#=================================================================================
+def plot_cnn_metrics(history, epoch = NUM_EPOCHS):
+    """
+    Reads a model.fit() history and returns six plots
+    """
+    
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+    
+    pred_e = [1-a for a in acc]
+    val_pred_e = [1-a for a in val_acc]
+    
+    prec = history.history['precision']
+    val_prec = history.history['val_precision']
+    
+    recall = history.history['recall']
+    val_recall = history.history['val_recall']
+    
+    auc = history.history['auc']
+    val_auc = history.history['val_auc']
+
+    epochs_range = range(epoch)
+    
+    plt.figure(figsize=(15, 15))
+    
+    plt.subplot(2, 3, 1)
+    plt.plot(epochs_range, auc, label='Training AUC')
+    plt.plot(epochs_range, val_auc, label='Validation AUC')
+    plt.xlabel('Epoch')
+    plt.ylabel('AUC')
+    plt.legend(loc='best')
+    plt.title('Training and Validation AUC')
+    
+    plt.subplot(2, 3, 2)
+    plt.plot(epochs_range, prec, label='Training Precision')
+    plt.plot(epochs_range, val_prec, label='Validation Precision')
+    plt.xlabel('Epoch')
+    plt.ylabel('Precision')
+    plt.legend(loc='best')
+    plt.title('Training and Validation Precision')
+    
+    plt.subplot(2, 3, 3)
+    plt.plot(epochs_range, recall, label='Training Recall')
+    plt.plot(epochs_range, val_recall, label='Validation Recall')
+    plt.xlabel('Epoch')
+    plt.ylabel('Recall')
+    plt.legend(loc='best')
+    plt.title('Training and Validation Recall')
+    
+    plt.subplot(2, 3, 4)
+    plt.plot(epochs_range, pred_e, label='Training Prediction Errors')
+    plt.plot(epochs_range, val_pred_e, label='Validation Prediction Errors')
+    plt.xlabel('Epoch')
+    plt.ylabel('Prediction Error')
+    plt.legend(loc='best')
+    plt.title('Training and Validation Prediction Errors')
+    
+    plt.subplot(2, 3, 5)
+    plt.plot(epochs_range, acc, label='Training Accuracy')
+    plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend(loc='best')
+    plt.title('Training and Validation Accuracy')
+    
+    plt.subplot(2, 3, 6)
+    plt.plot(epochs_range, loss, label='Training Loss')
+    plt.plot(epochs_range, val_loss, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend(loc='best')
+    plt.title('Training and Validation Loss')
+    
+    
+    plt.show()
+#====================================================================================
+def roc_gmeans(model, lb, X_test:np.array, y_test:np.array, color='', dnn=False): 
+
+    if dnn:
+        yhat = model.predict(X_test)
+    elif hasattr(model, "predict_proba"): 
+        yhat = model.predict_proba(X_test)[:,1]
+    else: # use decision function
+        prob_pos = model.decision_function(X_test)
+        yhat = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
+    auc = roc_auc_score(y_test, yhat)
+    fpr, tpr, thresholds = roc_curve(y_test, yhat) # calculate roc curves
+    gmeans = np.sqrt(tpr * (1-fpr)) # calculate the g-mean for each threshold
+    ix = np.argmax(gmeans) # locate the index of the largest g-mean
+    print('Best Threshold for %r = %f, G-Mean=%.3f' % (lb, thresholds[ix], gmeans[ix]))
+    # plot the roc curve for the model
+    if color == '':
+        plt.plot(fpr, tpr, label=lb)
+        plt.scatter(fpr[ix], tpr[ix], marker='o', label=lb)
+    else:
+        plt.plot(fpr, tpr, color = color, label=lb)
+        plt.scatter(fpr[ix], tpr[ix], marker='o', color = color,label=lb)
+        
+# =================================================================================================
 param_grid_gbm = {
               'learning_rate': [0.1],
               'max_depth': [5,8],
@@ -168,17 +285,18 @@ param_grid_gbm = {
 
 param_grid_lr = {
     'C': [1e-3, 1e-2, 1e-1, 1e0],
-    'solver': ['lbfgs', 'liblinear'],
+    'solver': ['lbfgs', 'sag', 'saga','liblinear'],
     'max_iter': [50, 100, 200],
+    'class_weight': [{0:4, 1:1}, None],
     #'random_state': [RANDOM_STATE],
     'n_jobs': [-1]
     }
 
 param_grid_svc = {
-    'C': [1],
-    'kernel': ['poly'],
+    'C': [0.1, 1],
+    'kernel': ['linear', 'rbg', 'sigmoid', 'poly'],
     'degree': [5, 6],
-    #'class_weight': [{1: 4}, None],
+    'class_weight': [{0:4, 1:1}, None],
     'gamma': ['scale']
     }
     
@@ -189,7 +307,7 @@ param_grid_ada = {
     }
 
 param_grid_bag = {
-    'base_estimator':[ExtraTreesClassifier()],#, KNeighborsClassifier(),RandomForestClassifier(), 
+    'base_estimator':[RandomForestClassifier()],#, KNeighborsClassifier(),ExtraTreesClassifier(), 
     'n_estimators':[100, 200],
     'max_samples': [0.8], 
     'max_features':[0.7, 0.9]
@@ -201,13 +319,31 @@ param_grid_sgd = {
     'alpha': [1e-4, 1e-5]
     }
     
-    
-    param_grid_knn = {
-    'n_neighbors': [3, 6, 9, 12],
-    'weights': ['uniform', 'distance'],
-    'metric': ['euclidean', 'manhattan']
+param_grid_gnb = {
+    'priors':[np.array([0.2,0.8]), np.array([0.15,0.85]), np.array([0.3,0.7]), None],
+    'var_smoothing':[1e-9]
 }
 
+param_grid_mlp = {
+    'hidden_layer_sizes':[(100,)],
+    'activation': ['logistic','tanh','relu'],
+    'solver': ['lbfgs','adam'],
+    'alpha':[1e-4, 1e-5],
+    'learning_rate':['adaptive'],
+    'max_iter': [100,200],
+    'learning_rate_init': [1e-3, 1e-1]    
+}
+
+param_grid_lda = {
+    'solver': ['svd', 'lsqr', 'eigen'],
+    'shrinkage': [0.1, 0.3, 0.6, 0.9],
+    }
+
+param_grid_knn = {
+    'n_neighbors': [3, 6, 9, 12],
+    'weights': ['uniform', 'distance'],
+    'metric': ['euclidean', 'manhattan','cosine']
+}
 
 param_grid_xgb = {
     'min_child_weight': [1, 5, 10],
@@ -216,3 +352,8 @@ param_grid_xgb = {
     'colsample_bytree': [0.6, 0.8, 1.0],
     'max_depth': [3, 4, 5]    
 }
+
+param_grid_vot = {
+    'voting': ['soft', 'hard'],
+    'weights': [[1, 10, 2, 0.5],[1, 9, 3, 0.5],[1, 10, 3, 0.5]]
+    }

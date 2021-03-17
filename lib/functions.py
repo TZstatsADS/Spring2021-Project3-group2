@@ -38,7 +38,7 @@ RANDOM_STATE = np.random.seed(2020)
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 BATCH_SIZE = 100
-IMG_SIZE = 192
+IMG_SIZE = 100
 SHUFFLE_SIZE = 1000
 METRICS = [
       tf.keras.metrics.TruePositives(name='tp'),
@@ -67,9 +67,12 @@ def load_points(path):
         points = mat_contents['faceCoordinates2']
     return points
 #=========================================================
-def show_orginal_image(images, data_points, labels, idx):
+def show_sample_image(path, data_points, labels, idx):
+    filenames = glob.glob(path+ "images/*.jpg")
+    filenames.sort()
     plt.figure(figsize=(12, 8))
-    plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB))
+    img = cv2.imread(filenames[idx])
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.scatter(data_points[idx][:, 0], 
                 data_points[idx][:, 1],
                 c = 'white',
@@ -91,7 +94,19 @@ def preprocess_image(images, data_points, idx):
     pts_center = data_points[idx][37]
     cropped=img[int(pts_center[1])-225:int(pts_center[1])+225,int(pts_center[0])-225:int(pts_center[0])+225]
     resized = cv2.resize(cropped, (IMG_SIZE, IMG_SIZE), interpolation = cv2.INTER_AREA)
-    return(resized)
+    gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+    return(gray)
+# =======================================================
+def round_float(f, d:int):
+    '''
+    If f is float, round it to d decimals,
+    else return s as is
+    '''
+    try:
+        r = round(f, d)
+    except:
+        r = f
+    return(r)
 # =======================================================
 def data_prepare(feature_set:np.array):
     """ 
