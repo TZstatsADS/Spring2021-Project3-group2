@@ -1,5 +1,4 @@
 from functions import *
-from train import *
 from feature import *
 
 
@@ -21,17 +20,6 @@ from sklearn.metrics import classification_report, roc_curve, plot_roc_curve, au
 
 
 #=======================================================
-path = 'C:\\Users\\Chloe\\Downloads\\test_set_predict\\'
-wd = os.getcwd()
-output_dir = os.path.join(os.path.dirname(wd), "output\\")
-
-pt_filenames = glob.glob(path + "points/*.mat") #points_path = f"data//train_set//points//{index:04d}.mat"
-pt_filenames.sort()
-points_list = [load_points(path) for path in pt_filenames]
-data_points = np.asarray(points_list, dtype=np.float32)
-
-X1r_tt, tm1r_tt = get_reduced_feature_1(data_points, y= np.empty([1,]), save_name = 'feature1_reduced_test')
-
 def predict_results(model, X:np.array, prob = False, save = False, dnn=False):
     """
     Takes fitted model and returns the prediction results and time for prediction.
@@ -50,3 +38,18 @@ def predict_results(model, X:np.array, prob = False, save = False, dnn=False):
         results = best_model.predict_proba(X)
         tm = round(time.time()-start,4)
     return(results, tm)
+    
+path = 'C:\\Users\\Chloe\\Downloads\\test_set_predict\\'
+wd = os.getcwd()
+output_dir = os.path.join(os.path.dirname(wd), "output\\")
+
+pt_filenames = glob.glob(path + "points/*.mat") #points_path = f"data//train_set//points//{index:04d}.mat"
+pt_filenames.sort()
+points_list = [load_points(path) for path in pt_filenames]
+data_points = np.asarray(points_list, dtype=np.float32)
+
+X1r_tt, tm1r_tt = get_reduced_feature_1(data_points, y= np.empty([1,]), save_name = 'feature1_reduced_test')
+
+MLP_c_fit = load(output_dir +'BestModel.joblib')
+
+predict_results(MLP_c_fit, X1r_tt, prob = False, save = True)

@@ -63,6 +63,9 @@ METRICS = [
       tf.keras.metrics.AUC(name='auc'),
 ]
 
+
+wd = os.getcwd()
+output_dir = os.path.join(os.path.dirname(wd), "output\\")
 #========================================================================
 def train(model, X:np.array, y:np.array):
     """
