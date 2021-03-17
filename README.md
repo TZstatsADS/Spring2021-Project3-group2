@@ -18,8 +18,8 @@ Term: Spring 2021
 	
 **Contribution statement**: ([default](doc/a_note_on_contributions.md)) 
 Anh Thu Doan : Originally did knn, xgboost, svm and logistic. Later on i tuned knn and xgboost.
-Hao Hu: Did pca+svm in R
-Feng Rong: Did LDA in Python
+Hao Hu: Did pca+svm in R.
+Feng Rong: Did LDA in Python.
 Siyuan Sang: Did Random Forest model in R.
 Yibai Liu: Did baseline GBM, fast GBM, adaBoost, Multi-layer Perceptron Classifier, Stochastic Gradient Descent, Guissian Naive Bayes, Bagging Classifier, VotingClassifier, SVM, Tensorflow Deep Neural Networks.
 Also generated main.ipynb and other python scripts, created reduced and resampled feature sets, incorporated others' work into the main notebook.
