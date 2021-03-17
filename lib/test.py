@@ -49,7 +49,9 @@ points_list = [load_points(path) for path in pt_filenames]
 data_points = np.asarray(points_list, dtype=np.float32)
 
 X1r_tt, tm1r_tt = get_reduced_feature_1(data_points, y= np.empty([1,]), save_name = 'feature1_reduced_test')
-
+X0_tt, tm0_tt = get_feature_0(data_points, save_name = 'feature0_test')
 MLP_c_fit = load(output_dir +'BestModel.joblib')
+base = load(output_dir+'BaseModel.joblib')
 
-predict_results(MLP_c_fit, X1r_tt, prob = False, save = True)
+results0, tm0 = predict_results(base, X0_tt, prob = False, save = True)
+results1, tm1 = predict_results(MLP_c_fit, X1r_tt, prob = False, save = True)
